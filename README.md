@@ -68,14 +68,10 @@ your Amazon account — it requires 2-step verification via an authenticator app
 Settings → Login & Security → 2-step verification → Backup methods → Add app). This gets
 you TTS/announcements, volume, and media control on your Echoes as native entities.
 
-### Smart lightbulbs
-What brand are these? If they're Philips Hue, TP-Link Kasa/Tapo, Wiz, LIFX, Sengled, or
-Govee, Home Assistant has a native integration with local control — much more reliable
-than going through Alexa. If they only work through the Alexa app with no separate app/
-API of their own, the fallback is the [Alexa Media Player](https://github.com/alandtse/alexa_media_player)
-custom component (installed via HACS), which can trigger existing Alexa Routines
-("turn on living room light") as an HA switch. Tell me the brand and I'll wire up the
-right one.
+### Smart plugs / lightbulbs
+Not currently in use, so skipped for now. If they come back into use later, let me know
+the brand (Philips Hue vs. generic "Amazon" plugs/bulbs) and I'll wire up the right
+integration.
 
 ### Eufy Security (cameras/doorbell)
 Already wired into `docker-compose.yml` as the `eufy-security-ws` bridge container:
@@ -117,9 +113,15 @@ Native **Samsung Smart TV** integration (2016+ Tizen models): Settings → Devic
 Services → Add Integration → "Samsung Smart TV", enter the TV's IP. Accept the pairing
 prompt that appears on the TV screen the first time.
 
-### Mini drone
-What model is it (e.g. DJI/Ryze Tello, Holy Stone, other FPV)? The integration path
-differs a lot by brand/SDK, so tell me which one and I'll add it.
+### Drone (DJI Mini 4 Pro)
+Not automatable — out of scope. Consumer DJI drones (Mini/Air/Mavic/Neo/Flip/Avata) only
+communicate with the DJI Fly app over the remote controller's own radio link; there's no
+local API, network interface, or SDK a Pi/Home Assistant could reach. (The one exception
+in DJI's lineup is the Tello, which has an open UDP SDK — not applicable here.)
+
+### Amazon Glow
+Also out of scope — it's a discontinued, fully closed device tied to the Glow app/Amazon
+account with no public API ever offered.
 
 ## Backups
 
