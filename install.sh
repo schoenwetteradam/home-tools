@@ -66,22 +66,41 @@ mkdir -p config/homeassistant \
          uptime-kuma portainer eufy-security-ws \
          esphome zigbee2mqtt/data
 
-# --- 5. Bring the stack up -------------------------------------------------
+# --- 5. Friendly local hostnames, served by Pi-hole's DNS -------------------
+# shellcheck disable=SC1091
+set -a; source .env; set +a
+
+if [[ -n "${PI_STATIC_IP:-}" ]]; then
+  log "Adding friendly local hostnames to Pi-hole (dash, ha, pihole, status, portainer, cameras)"
+  custom_list="pihole/etc-pihole/custom.list"
+  touch "$custom_list"
+  for name in dash ha pihole status portainer cameras; do
+    sed -i "/[[:space:]]${name}\$/d" "$custom_list"
+    echo "${PI_STATIC_IP} ${name}" >> "$custom_list"
+  done
+else
+  echo "PI_STATIC_IP is not set in .env, skipping friendly hostnames. Set it and re-run." >&2
+fi
+
+# --- 6. Bring the stack up -------------------------------------------------
 log "Pulling images"
 docker compose pull
 
 log "Starting services"
 docker compose up -d
+docker compose restart pihole >/dev/null 2>&1 || true # pick up custom.list if pihole was already running
 
 pi_ip=$(hostname -I | awk '{print $1}')
 cat <<EOF
 
 Stack is up. Give Home Assistant a minute to finish its first boot, then visit:
 
-  Home Assistant   http://${pi_ip}:8123
-  Pi-hole admin    http://${pi_ip}:8080/admin
-  Uptime Kuma      http://${pi_ip}:3001
-  Portainer        http://${pi_ip}:9000
+  Dashboard        http://dash/            (once your router/devices use Pi-hole as DNS)
+  Home Assistant   http://ha:8123/          or http://${pi_ip}:8123
+  Pi-hole admin    http://pihole:8080/admin or http://${pi_ip}:8080/admin
+  Uptime Kuma      http://status:3001/      or http://${pi_ip}:3001
+  Portainer        http://portainer:9000/   or http://${pi_ip}:9000
+  Eufy bridge      http://cameras:3000/     or http://${pi_ip}:3000
   MQTT broker      ${pi_ip}:1883
 
 See README.md for next steps (setting Pi-hole as your router's DNS, backups, adding more services).

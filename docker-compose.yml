@@ -74,6 +74,17 @@ services:
     volumes:
       - ./eufy-security-ws:/data
 
+  homepage:
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    ports:
+      - "80:3000" # no port to remember: http://dash/
+    volumes:
+      - ./homepage/config:/app/config
+    environment:
+      - TZ=${TZ}
+
   esphome:
     container_name: esphome
     image: ghcr.io/esphome/esphome:stable

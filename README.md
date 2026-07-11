@@ -13,6 +13,7 @@ via Docker Compose:
 | [eufy-security-ws](https://github.com/bropat/eufy-security-ws) | Bridge that lets Home Assistant talk to Eufy Security cameras/doorbells | `http://<pi-ip>:3000` |
 | [ESPHome](https://esphome.io/) | Build/flash/manage your own ESP32/ESP8266 sensors | `http://<pi-ip>:6052` |
 | [Zigbee2MQTT](https://www.zigbee2mqtt.io/) *(disabled by default)* | Bridges Zigbee devices to MQTT once you have a coordinator dongle | `http://<pi-ip>:8081` |
+| [Homepage](https://gethomepage.dev/) | The one link everyone bookmarks — a tap-tile launcher for everything else | `http://dash/` |
 
 This is a starting point, not a fixed design — swap or drop services in `docker-compose.yml`
 as your needs become clearer (see "Expanding" below).
@@ -46,6 +47,30 @@ anything.
 For ad-blocking to apply to every device on your network, point your router's DHCP DNS
 setting to the Pi's static IP (not just individual devices). Check your router's admin
 page for "DNS Server" or "DHCP settings".
+
+## One link for the whole family
+
+`install.sh` also adds a few plain hostnames to Pi-hole's DNS (no `.local`, no port
+number — those trip up some devices/kids typing them), pointing at the Pi:
+
+| Type this | Gets you |
+|---|---|
+| `http://dash/` | The Homepage dashboard — tap-tile launcher, the one to bookmark/pin on every phone, tablet, and kid's device |
+| `http://ha:8123/` | Home Assistant directly |
+| `http://pihole:8080/admin` | Pi-hole admin |
+| `http://status:3001/` | Uptime Kuma |
+| `http://portainer:9000/` | Portainer |
+| `http://cameras:3000/` | Eufy Security bridge |
+
+These only resolve for devices using Pi-hole as their DNS server (see above) — until
+that's set on your router, use the `http://<pi-ip>:<port>` forms instead, which always
+work.
+
+`http://dash/` needs no login, so it's safe to leave open on a family tablet or put in
+kids' bookmarks — it only launches to the other services, each of which keeps its own
+login/admin gate (Pi-hole's password, Portainer's account, etc.). Edit the tiles it
+shows in `homepage/config/services.yaml`, and its look in `homepage/config/settings.yaml`
+(`docker compose restart homepage` after changes).
 
 ## Adding more automation
 
@@ -205,5 +230,5 @@ docker compose pull && docker compose up -d
   devices like Zigbee dongles. Drop `privileged: true` if you don't plan to pass through
   hardware.
 - Avoid adding heavier services (Plex/Jellyfin, Frigate NVR) to this same Pi without more
-  RAM/storage — the current stack (including eufy-security-ws and HACS) uses roughly
-  2–2.5GB, leaving limited headroom on a 4GB board.
+  RAM/storage — the current stack (including eufy-security-ws, HACS, and Homepage) uses
+  roughly 2–2.5GB, leaving limited headroom on a 4GB board.
