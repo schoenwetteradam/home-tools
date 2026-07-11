@@ -63,7 +63,7 @@ fi
 mkdir -p config/homeassistant \
          mosquitto/data mosquitto/log \
          pihole/etc-pihole pihole/etc-dnsmasq.d \
-         uptime-kuma portainer
+         uptime-kuma portainer eufy-security-ws
 
 # --- 5. Bring the stack up -------------------------------------------------
 log "Pulling images"

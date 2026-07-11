@@ -60,3 +60,16 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./portainer:/data
+
+  eufy-security-ws:
+    container_name: eufy-security-ws
+    image: bropat/eufy-security-ws:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # web UI for solving CAPTCHA/2FA prompts on first login, then the WebSocket API HA talks to
+    environment:
+      - USERNAME=${EUFY_USERNAME}
+      - PASSWORD=${EUFY_PASSWORD}
+      - COUNTRY=${EUFY_COUNTRY}
+    volumes:
+      - ./eufy-security-ws:/data

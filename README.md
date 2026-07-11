@@ -10,6 +10,7 @@ via Docker Compose:
 | [Pi-hole](https://pi-hole.net/) | Network-wide ad blocking + local DNS | `http://<pi-ip>:8080/admin` |
 | [Uptime Kuma](https://github.com/louislam/uptime-kuma) | Watches your internet connection and LAN devices, alerts you when something goes down | `http://<pi-ip>:3001` |
 | [Portainer](https://www.portainer.io/) | Web UI for managing the containers | `http://<pi-ip>:9000` |
+| [eufy-security-ws](https://github.com/bropat/eufy-security-ws) | Bridge that lets Home Assistant talk to Eufy Security cameras/doorbells | `http://<pi-ip>:3000` |
 
 This is a starting point, not a fixed design — swap or drop services in `docker-compose.yml`
 as your needs become clearer (see "Expanding" below).
@@ -55,6 +56,71 @@ page for "DNS Server" or "DHCP settings".
   To require a login instead, see the commented instructions in
   `mosquitto/config/mosquitto.conf`.
 
+## Your devices
+
+Setup for each device happens mostly in the Home Assistant UI, not in config files.
+Rough order: get the base stack running (above), then work through these.
+
+### Amazon Echo devices
+Home Assistant has a native **Alexa Devices** integration (added in HA 2025.6, no HACS
+needed): Settings → Devices & Services → Add Integration → "Alexa Devices". Log in with
+your Amazon account — it requires 2-step verification via an authenticator app (Amazon
+Settings → Login & Security → 2-step verification → Backup methods → Add app). This gets
+you TTS/announcements, volume, and media control on your Echoes as native entities.
+
+### Smart lightbulbs
+What brand are these? If they're Philips Hue, TP-Link Kasa/Tapo, Wiz, LIFX, Sengled, or
+Govee, Home Assistant has a native integration with local control — much more reliable
+than going through Alexa. If they only work through the Alexa app with no separate app/
+API of their own, the fallback is the [Alexa Media Player](https://github.com/alandtse/alexa_media_player)
+custom component (installed via HACS), which can trigger existing Alexa Routines
+("turn on living room light") as an HA switch. Tell me the brand and I'll wire up the
+right one.
+
+### Eufy Security (cameras/doorbell)
+Already wired into `docker-compose.yml` as the `eufy-security-ws` bridge container:
+1. Fill in `EUFY_USERNAME` / `EUFY_PASSWORD` / `EUFY_COUNTRY` in `.env`, then
+   `docker compose up -d eufy-security-ws`.
+2. Open `http://<pi-ip>:3000` — if Eufy challenges the login with a CAPTCHA or 2FA code,
+   this page is where you resolve it.
+3. Run `./scripts/install-hacs.sh` (one-time) to get HACS into Home Assistant, then use
+   HACS to install the **Eufy Security** integration
+   ([fuatakgun/eufy_security](https://github.com/fuatakgun/eufy_security)) and point it
+   at `eufy-security-ws:3000`.
+
+Use a dedicated Eufy account if you can — logging the bridge in can sign your phone app
+out.
+
+### MyQ garage door
+Chamberlain (MyQ's owner) blocks third-party API access, which is why Home Assistant
+[removed its official MyQ integration in 2023](https://www.home-assistant.io/blog/2023/11/06/removal-of-myq-integration/)
+and no longer works reliably even with unofficial workarounds. The community-recommended
+fix is [ratgdo](https://paulwieland.github.io/ratgdo/) — a small ESPHome-based board that
+wires directly into the opener's existing logic board (a few screw terminals, no
+soldering) and integrates with Home Assistant fully locally, bypassing MyQ's cloud
+entirely. It's about $30 and considered the durable fix rather than a workaround.
+
+### Xbox
+Native **Xbox** integration, but Microsoft requires you to register your own Azure/Entra
+ID app first:
+1. Create an app registration at [portal.azure.com](https://portal.azure.com) (Entra ID
+   directory), add a client secret under Certificates & Secrets.
+2. In Home Assistant: Settings → Devices & Services → Application Credentials → add the
+   Client ID/Secret for "Xbox".
+3. Settings → Devices & Services → Add Integration → "Xbox", sign in with the Microsoft
+   account tied to your Xboxes.
+
+Gives you power state, currently-playing info, and basic control per console.
+
+### Samsung Smart TV
+Native **Samsung Smart TV** integration (2016+ Tizen models): Settings → Devices &
+Services → Add Integration → "Samsung Smart TV", enter the TV's IP. Accept the pairing
+prompt that appears on the TV screen the first time.
+
+### Mini drone
+What model is it (e.g. DJI/Ryze Tello, Holy Stone, other FPV)? The integration path
+differs a lot by brand/SDK, so tell me which one and I'll add it.
+
 ## Backups
 
 ```bash
@@ -81,5 +147,5 @@ docker compose pull && docker compose up -d
   devices like Zigbee dongles. Drop `privileged: true` if you don't plan to pass through
   hardware.
 - Avoid adding heavier services (Plex/Jellyfin, Frigate NVR) to this same Pi without more
-  RAM/storage — the current stack uses roughly 1.5–2GB, leaving limited headroom on a 4GB
-  board.
+  RAM/storage — the current stack (including eufy-security-ws and HACS) uses roughly
+  2–2.5GB, leaving limited headroom on a 4GB board.
