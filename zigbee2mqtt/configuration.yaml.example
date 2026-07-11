@@ -1,0 +1,21 @@
+# Copy this to zigbee2mqtt/data/configuration.yaml once you have a coordinator dongle
+# and have uncommented the zigbee2mqtt service in docker-compose.yml.
+
+homeassistant:
+  enabled: true # auto-creates entities in Home Assistant via MQTT discovery
+
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://mosquitto:1883
+
+serial:
+  port: /dev/ttyACM0 # matches the container-side path from the `devices:` mapping in docker-compose.yml
+  adapter: zstack # zstack for TI-based dongles (Sonoff Zigbee 3.0 Plus, CC2652); use `ember` for ConBee/deCONZ-style
+
+frontend:
+  port: 8080
+
+permit_join: false # flip to true only while pairing new devices, then back off
+
+advanced:
+  network_key: GENERATE

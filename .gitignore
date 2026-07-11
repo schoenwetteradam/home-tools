@@ -8,4 +8,7 @@ pihole/
 uptime-kuma/
 portainer/
 eufy-security-ws/
+esphome/
+zigbee2mqtt/data/
 backups/
+.venv/

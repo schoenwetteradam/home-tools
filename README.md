@@ -11,6 +11,8 @@ via Docker Compose:
 | [Uptime Kuma](https://github.com/louislam/uptime-kuma) | Watches your internet connection and LAN devices, alerts you when something goes down | `http://<pi-ip>:3001` |
 | [Portainer](https://www.portainer.io/) | Web UI for managing the containers | `http://<pi-ip>:9000` |
 | [eufy-security-ws](https://github.com/bropat/eufy-security-ws) | Bridge that lets Home Assistant talk to Eufy Security cameras/doorbells | `http://<pi-ip>:3000` |
+| [ESPHome](https://esphome.io/) | Build/flash/manage your own ESP32/ESP8266 sensors | `http://<pi-ip>:6052` |
+| [Zigbee2MQTT](https://www.zigbee2mqtt.io/) *(disabled by default)* | Bridges Zigbee devices to MQTT once you have a coordinator dongle | `http://<pi-ip>:8081` |
 
 This is a starting point, not a fixed design — swap or drop services in `docker-compose.yml`
 as your needs become clearer (see "Expanding" below).
@@ -47,14 +49,49 @@ page for "DNS Server" or "DHCP settings".
 
 ## Adding more automation
 
-- **Zigbee2MQTT / ESPHome / Node-RED** can be added as extra services in
-  `docker-compose.yml`, all pointed at the same Mosquitto broker (`mosquitto:1883`).
 - Home Assistant's config lives in `config/homeassistant/` (created on first boot).
   Edit `configuration.yaml` / `automations.yaml` there directly, or use the Home
   Assistant UI (Settings → Automations).
 - Mosquitto defaults to `allow_anonymous true` for simplicity on a trusted home LAN.
   To require a login instead, see the commented instructions in
   `mosquitto/config/mosquitto.conf`.
+- **Node-RED** isn't included yet — add it as another service in `docker-compose.yml`
+  (image `nodered/node-red`) if/when you want flow-based automations alongside HA's.
+
+### ESPHome (DIY sensors, already running)
+
+ESPHome is enabled by default at `http://<pi-ip>:6052` — it's just a dashboard/compiler,
+so it doesn't need any hardware to be present yet. To build a new sensor: write or
+generate a YAML config for your ESP32/ESP8266 board through the dashboard, connect the
+board via USB to whatever computer you're using to browse to the dashboard, and flash it
+(the dashboard uses your browser's Web Serial support for the very first flash). After
+that first flash, updates happen over WiFi (OTA) — the ESPHome dashboard finds devices
+via mDNS, which is why the container runs with `network_mode: host`.
+
+If you'd rather flash new boards by plugging them straight into the Pi instead of a
+laptop, add a `devices:` entry under the `esphome` service in `docker-compose.yml`
+pointing at the board's serial port (e.g. `/dev/ttyUSB0:/dev/ttyUSB0`).
+
+ESPHome devices publish sensor data straight to Home Assistant via its API (no MQTT
+needed), or to Mosquitto (`mosquitto:1883`) if you prefer MQTT-based sensors instead.
+
+### Zigbee2MQTT (disabled until you have a coordinator dongle)
+
+1. Buy a Zigbee coordinator USB dongle — the [Sonoff Zigbee 3.0 USB Dongle
+   Plus](https://www.zigbee2mqtt.io/guide/adapters/) is well-supported and cheap.
+2. Plug it into the Pi, then find its stable device path:
+   `ls -l /dev/serial/by-id/`
+3. `cp zigbee2mqtt/configuration.yaml.example zigbee2mqtt/data/configuration.yaml` and
+   edit the `serial.port` value to match your board's container-side path (default
+   `/dev/ttyACM0`, matching the mapping below).
+4. In `docker-compose.yml`, uncomment the `zigbee2mqtt` service block and replace
+   `REPLACE_WITH_YOUR_DONGLE` in its `devices:` line with the by-id path from step 2.
+5. `docker compose up -d zigbee2mqtt`, then open `http://<pi-ip>:8081`, flip
+   `permit_join` on, and pair your devices.
+
+With `homeassistant.enabled: true` in its config (already set in the template),
+Zigbee2MQTT auto-creates Home Assistant entities for anything you pair — no extra HA
+config needed.
 
 ## Your devices
 
@@ -122,6 +159,25 @@ in DJI's lineup is the Tello, which has an open UDP SDK — not applicable here.
 ### Amazon Glow
 Also out of scope — it's a discontinued, fully closed device tied to the Glow app/Amazon
 account with no public API ever offered.
+
+## Monitoring dashboard (Uptime Kuma)
+
+Uptime Kuma doesn't let you pre-configure monitors before its account exists, so:
+
+1. Open `http://<pi-ip>:3001` once and create the admin account through the setup
+   wizard.
+2. Bulk-create a standard set of monitors (internet, Home Assistant, Pi-hole, Portainer,
+   the Eufy bridge, and the MQTT broker) with the helper script:
+   ```bash
+   python3 -m venv .venv && .venv/bin/pip install uptime-kuma-api
+   .venv/bin/python scripts/setup-uptime-kuma.py --username admin
+   ```
+   It's safe to re-run — it skips monitors that already exist by name.
+3. Edit `scripts/setup-uptime-kuma.py` to add your own — e.g. Xbox or the Samsung TVs by
+   IP (give them a DHCP reservation on your router first so the IP doesn't drift; note
+   consoles/TVs won't reliably answer pings while fully powered off).
+4. Configure a notification channel in the Uptime Kuma UI (Settings → Notifications —
+   supports push/email/Slack/etc.) and attach it to the monitors you want alerts from.
 
 ## Backups
 

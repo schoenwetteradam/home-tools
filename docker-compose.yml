@@ -73,3 +73,31 @@ services:
       - COUNTRY=${EUFY_COUNTRY}
     volumes:
       - ./eufy-security-ws:/data
+
+  esphome:
+    container_name: esphome
+    image: ghcr.io/esphome/esphome:stable
+    restart: unless-stopped
+    network_mode: host # required for mDNS discovery of ESPHome devices on the LAN
+    volumes:
+      - ./esphome:/config
+      - /etc/localtime:/etc/localtime:ro
+
+  # Zigbee2MQTT needs a Zigbee coordinator USB dongle (e.g. Sonoff Zigbee 3.0 USB Dongle
+  # Plus, ConBee II) plugged into the Pi. Uncomment once you have one:
+  #
+  # zigbee2mqtt:
+  #   container_name: zigbee2mqtt
+  #   image: ghcr.io/koenkk/zigbee2mqtt
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:8080" # frontend; 8080 is taken by Pi-hole on the host
+  #   volumes:
+  #     - ./zigbee2mqtt/data:/app/data
+  #     - /run/udev:/run/udev:ro
+  #   devices:
+  #     - /dev/serial/by-id/REPLACE_WITH_YOUR_DONGLE:/dev/ttyACM0
+  #   environment:
+  #     - TZ=${TZ}
+  #   depends_on:
+  #     - mosquitto
