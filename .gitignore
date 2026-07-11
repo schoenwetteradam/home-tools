@@ -1,0 +1,10 @@
+.env
+
+# runtime state/data created by the containers, not source
+config/homeassistant/
+mosquitto/data/
+mosquitto/log/
+pihole/
+uptime-kuma/
+portainer/
+backups/
