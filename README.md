@@ -204,17 +204,61 @@ Uptime Kuma doesn't let you pre-configure monitors before its account exists, so
 4. Configure a notification channel in the Uptime Kuma UI (Settings → Notifications —
    supports push/email/Slack/etc.) and attach it to the monitors you want alerts from.
 
+## Reliability
+
+A Pi running everything off its SD card 24/7 is the single biggest risk to this stack —
+constant database writes (Home Assistant's recorder, Pi-hole's FTL DB, Uptime Kuma) wear
+SD cards out, and corruption after a power blip is common. With your external USB 3.0
+drive attached, fix that first:
+
+### Move Docker + this project onto the external drive
+
+```bash
+./scripts/migrate-to-external-drive.sh /dev/sda   # use the whole disk, not a partition
+```
+
+This formats *only the drive you name* as ext4, mounts it at `/mnt/ssd`, moves Docker's
+data-root there, and copies this project's data over — it never deletes anything on the
+SD card, so you can verify the new setup works before tearing down the old copy yourself
+(the script prints the exact next steps, including the `docker compose down` /
+`docker compose up -d` cutover). It also caps container logs at 10MB × 3 files each, so
+runaway logging can't quietly fill the disk.
+
+If you're not sure which device is the drive, run the script with no arguments — it
+lists all disks first, and it refuses to touch whatever disk is holding the OS itself.
+
+### Self-healing containers
+
+`docker-compose.yml` now has healthchecks on the services most worth catching if they
+hang (Home Assistant, Mosquitto, Pi-hole, Uptime Kuma, Portainer, Homepage), plus an
+`autoheal` container that restarts any of them Docker marks unhealthy — this catches a
+process that's stuck but still running, which a plain `restart: unless-stopped` won't.
+(ESPHome and the Eufy bridge are left out of this — their images don't have a way to
+health-check that's reliable enough not to cause false restarts.)
+
+### Hardware watchdog
+
+For the rarer case where the whole OS wedges (not just a container):
+
+```bash
+./scripts/enable-watchdog.sh   # then: sudo reboot
+```
+
+Configures the Pi 5's hardware watchdog via systemd — if the system ever fully hangs, it
+force-reboots instead of sitting dead until someone notices.
+
 ## Backups
 
 ```bash
 ./scripts/backup.sh
 ```
 
-Tars up all persistent config/data into `backups/`, keeping the last 7. Add it to cron
-for nightly backups:
+Tars up all persistent config/data into `backups/` (or `$BACKUP_DIR` if set), keeping
+the last 7. Add it to cron for nightly backups — point it at the external drive once
+you've migrated:
 
 ```
-0 3 * * * cd /home/pi/home-tools && ./scripts/backup.sh >> backups/backup.log 2>&1
+0 3 * * * cd /mnt/ssd/home-tools && BACKUP_DIR=/mnt/ssd/backups ./scripts/backup.sh >> /mnt/ssd/backups/backup.log 2>&1
 ```
 
 ## Updating
