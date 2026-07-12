@@ -1,0 +1,114 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    privileged: true # allows access to USB devices (Zigbee/Z-Wave dongles); remove if you don't need hardware access
+    network_mode: host # required for device discovery (mDNS/SSDP) on the LAN
+    volumes:
+      - ./config/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    environment:
+      - TZ=${TZ}
+
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8080:80/tcp"
+    environment:
+      - TZ=${TZ}
+      - WEBPASSWORD=${PIHOLE_WEBPASSWORD}
+      - FTLCONF_LOCAL_IPV4=${PI_STATIC_IP}
+    volumes:
+      - ./pihole/etc-pihole:/etc/pihole
+      - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+
+  uptime-kuma:
+    container_name: uptime-kuma
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uptime-kuma:/app/data
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+
+  eufy-security-ws:
+    container_name: eufy-security-ws
+    image: bropat/eufy-security-ws:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # web UI for solving CAPTCHA/2FA prompts on first login, then the WebSocket API HA talks to
+    environment:
+      - USERNAME=${EUFY_USERNAME}
+      - PASSWORD=${EUFY_PASSWORD}
+      - COUNTRY=${EUFY_COUNTRY}
+    volumes:
+      - ./eufy-security-ws:/data
+
+  homepage:
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    ports:
+      - "80:3000" # no port to remember: http://dash/
+    volumes:
+      - ./homepage/config:/app/config
+    environment:
+      - TZ=${TZ}
+
+  esphome:
+    container_name: esphome
+    image: ghcr.io/esphome/esphome:stable
+    restart: unless-stopped
+    network_mode: host # required for mDNS discovery of ESPHome devices on the LAN
+    volumes:
+      - ./esphome:/config
+      - /etc/localtime:/etc/localtime:ro
+
+  # Zigbee2MQTT needs a Zigbee coordinator USB dongle (e.g. Sonoff Zigbee 3.0 USB Dongle
+  # Plus, ConBee II) plugged into the Pi. Uncomment once you have one:
+  #
+  # zigbee2mqtt:
+  #   container_name: zigbee2mqtt
+  #   image: ghcr.io/koenkk/zigbee2mqtt
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:8080" # frontend; 8080 is taken by Pi-hole on the host
+  #   volumes:
+  #     - ./zigbee2mqtt/data:/app/data
+  #     - /run/udev:/run/udev:ro
+  #   devices:
+  #     - /dev/serial/by-id/REPLACE_WITH_YOUR_DONGLE:/dev/ttyACM0
+  #   environment:
+  #     - TZ=${TZ}
+  #   depends_on:
+  #     - mosquitto

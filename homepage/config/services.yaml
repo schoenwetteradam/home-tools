@@ -1,0 +1,26 @@
+---
+- Smart Home:
+    - Home Assistant:
+        href: http://ha:8123/
+        description: Lights, sensors, automations
+        icon: home-assistant.png
+
+- Cameras & Security:
+    - Eufy Cameras:
+        href: http://cameras:3000/
+        description: Camera & doorbell bridge
+        icon: eufy-security.png
+
+- Network:
+    - Pi-hole:
+        href: http://pihole:8080/admin
+        description: Ad blocking
+        icon: pi-hole.png
+    - Uptime Status:
+        href: http://status:3001/
+        description: Is everything online?
+        icon: uptime-kuma.png
+    - Portainer:
+        href: http://portainer:9000/
+        description: Manage containers
+        icon: portainer.png

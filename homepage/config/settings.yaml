@@ -1,0 +1,14 @@
+title: Home Dashboard
+theme: dark
+color: slate
+headerStyle: clean
+layout:
+  Smart Home:
+    style: row
+    columns: 3
+  Cameras & Security:
+    style: row
+    columns: 3
+  Network:
+    style: row
+    columns: 4
