@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-BACKUP_DIR="backups"
+BACKUP_DIR="${BACKUP_DIR:-backups}" # override e.g. BACKUP_DIR=/mnt/ssd/backups once migrated off the SD card
 KEEP=7
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 ARCHIVE="${BACKUP_DIR}/home-tools-${TIMESTAMP}.tar.gz"
@@ -13,12 +13,16 @@ ARCHIVE="${BACKUP_DIR}/home-tools-${TIMESTAMP}.tar.gz"
 mkdir -p "$BACKUP_DIR"
 
 tar -czf "$ARCHIVE" \
+  --ignore-failed-read \
   --exclude='mosquitto/log' \
   config/homeassistant \
   mosquitto/config mosquitto/data \
   pihole \
   uptime-kuma \
   portainer \
+  eufy-security-ws \
+  esphome \
+  zigbee2mqtt/data \
   .env
 
 echo "Wrote $ARCHIVE"
