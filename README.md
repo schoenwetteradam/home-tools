@@ -211,6 +211,22 @@ constant database writes (Home Assistant's recorder, Pi-hole's FTL DB, Uptime Ku
 SD cards out, and corruption after a power blip is common. With your external USB 3.0
 drive attached, fix that first:
 
+### If the drive shows a bogus tiny size
+
+Some USB-SATA/SSD bridge chips (several Seagate portable drives included) don't work
+with Linux's UAS driver: the drive connects, `dmesg` shows `uas_eh_device_reset_handler`
+/ `Read Capacity failed` / `0-byte physical blocks`, and `lsblk` reports a bogus ~2GB
+instead of the real capacity. Fix it by forcing the older `usb-storage` driver for that
+device:
+
+```bash
+lsusb   # find the drive's idVendor:idProduct, e.g. 0bc2:ac15
+./scripts/fix-usb-uas-quirk.sh 0bc2:ac15
+sudo reboot
+```
+
+Then confirm with `lsblk -b -d -o NAME,SIZE,TYPE` that it reports its real size.
+
 ### Move Docker + this project onto the external drive
 
 ```bash
