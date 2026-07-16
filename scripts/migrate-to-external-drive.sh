@@ -98,7 +98,12 @@ echo "The old data is untouched at /var/lib/docker -- once everything below chec
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 new_project_dir="$MOUNT_POINT/home-tools"
 log "Copying $project_dir to $new_project_dir"
-rsync -a --exclude '.git' "$project_dir/" "$new_project_dir/"
+# $MOUNT_POINT is root-owned (created via `sudo mkdir` above), so creating the
+# destination and copying into it needs sudo too; hand ownership back to the
+# invoking user afterward so everyday git/docker compose use doesn't need sudo.
+sudo mkdir -p "$new_project_dir"
+sudo rsync -a --exclude '.git' "$project_dir/" "$new_project_dir/"
+sudo chown -R "$(id -u):$(id -g)" "$new_project_dir"
 
 cat <<EOF
 

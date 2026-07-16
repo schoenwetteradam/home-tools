@@ -49,7 +49,11 @@ if [[ ! -f .env ]]; then
     sed -i "s/^PI_STATIC_IP=.*/PI_STATIC_IP=${detected_ip}/" .env
   fi
 
-  generated_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
+  # `|| true` matters: once `head -c 16` has read enough bytes it closes the pipe,
+  # which sends tr a SIGPIPE and makes it exit non-zero -- under `pipefail` that
+  # fails the whole pipeline (and aborts the script under `set -e`) even though the
+  # captured output is correct.
+  generated_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16 || true)
   sed -i "s/^PIHOLE_WEBPASSWORD=.*/PIHOLE_WEBPASSWORD=${generated_password}/" .env
 
   echo "Generated Pi-hole admin password: ${generated_password}  (also saved in .env)"

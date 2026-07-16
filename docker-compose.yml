@@ -119,6 +119,9 @@ services:
       - ./homepage/config:/app/config
     environment:
       - TZ=${TZ}
+      # Homepage rejects requests whose Host header isn't in this list (anti DNS-rebinding
+      # check). Add any other hostname/IP you use to reach it, comma-separated, no spaces.
+      - HOMEPAGE_ALLOWED_HOSTS=${PI_STATIC_IP},dash
     labels:
       - autoheal=true
     healthcheck:
