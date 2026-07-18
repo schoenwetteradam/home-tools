@@ -175,6 +175,24 @@ Native **Samsung Smart TV** integration (2016+ Tizen models): Settings → Devic
 Services → Add Integration → "Samsung Smart TV", enter the TV's IP. Accept the pairing
 prompt that appears on the TV screen the first time.
 
+### Alliant Energy (or another utility) usage data
+Home Assistant has a built-in **Opower** integration that pulls electricity/gas usage
+straight from the same backend many utility apps use for their "usage history" graphs —
+no scraping, no scripts. Check whether your utility is supported:
+
+Settings → Devices & Services → Add Integration → search "Opower"
+
+If Alliant Energy shows up in the utility list, add it with your normal online-account
+login and Home Assistant starts pulling in usage as sensors you can graph or build
+cost-alert automations on. If it's not listed yet, Opower adds utilities over time, so
+it's worth checking back after a Home Assistant update.
+
+### Ting (Whisker Labs electrical/fire sensor)
+Ting doesn't publish a public API, so there's currently no way to pull its data into
+Home Assistant or this dashboard. It'll keep doing its actual job (electrical fire risk
+monitoring) fine on its own through the Ting app — just not something this stack can
+surface. Worth an occasional check of Whisker Labs' site in case that changes.
+
 ### Drone (DJI Mini 4 Pro)
 Not automatable — out of scope. Consumer DJI drones (Mini/Air/Mavic/Neo/Flip/Avata) only
 communicate with the DJI Fly app over the remote controller's own radio link; there's no
@@ -262,6 +280,34 @@ For the rarer case where the whole OS wedges (not just a container):
 
 Configures the Pi 5's hardware watchdog via systemd — if the system ever fully hangs, it
 force-reboots instead of sitting dead until someone notices.
+
+## Network file share (mini NAS)
+
+Turn some of the external SSD's space into a shared drive any device on the network can
+read/write — drop photos, install files, whatever, and reach them from every computer/
+phone in the house without hunting for cloud storage:
+
+```bash
+./scripts/setup-samba-share.sh <your-pi-username>
+```
+
+This installs Samba, creates `/mnt/ssd/shared/{photos,files,apps}`, and sets up a share
+you can connect to as:
+
+| Device | How |
+|---|---|
+| Windows | File Explorer → "This PC" → right-click → "Map network drive" → `\\<pi-ip>\shared` |
+| iPhone | Files app → Browse → Connect to Server → `smb://<pi-ip>/shared` |
+| Android | Any file manager with "Add network location (SMB)" → `smb://<pi-ip>/shared` |
+
+You'll set a Samba password the first time — that's separate from your Pi login
+password, used only for accessing the share. It lives on the same drive as your Docker
+data, so keep an eye on free space (`df -h /mnt/ssd`) if you start dumping a lot of large
+files onto it.
+
+This is just shared file storage, not an app store or anything that runs software for
+you — the `apps/` folder is just a handy place to keep installer files (.exe, .apk, ISOs)
+you want available to every device in the house instead of re-downloading them each time.
 
 ## Backups
 
