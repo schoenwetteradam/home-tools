@@ -14,6 +14,10 @@ via Docker Compose:
 | [ESPHome](https://esphome.io/) | Build/flash/manage your own ESP32/ESP8266 sensors | `http://<pi-ip>:6052` |
 | [Zigbee2MQTT](https://www.zigbee2mqtt.io/) *(disabled by default)* | Bridges Zigbee devices to MQTT once you have a coordinator dongle | `http://<pi-ip>:8081` |
 | [Homepage](https://gethomepage.dev/) | The one link everyone bookmarks — a tap-tile launcher for everything else | `http://dash/` |
+| [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Self-hosted password manager (Bitwarden-compatible) for the whole family | `http://<pi-ip>:8222` |
+| [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker) | Runs scheduled internet speed tests and graphs the history | `http://<pi-ip>:8765` |
+| [Mealie](https://mealie.io/) | Recipe box, meal planner, and shared shopping lists | `http://<pi-ip>:9925` |
+| [WireGuard](https://www.wireguard.com/) | Your own private VPN into the house — reach all of this securely from anywhere | UDP `51820` |
 
 This is a starting point, not a fixed design — swap or drop services in `docker-compose.yml`
 as your needs become clearer (see "Expanding" below).
@@ -61,6 +65,9 @@ number — those trip up some devices/kids typing them), pointing at the Pi:
 | `http://status:3001/` | Uptime Kuma |
 | `http://portainer:9000/` | Portainer |
 | `http://cameras:3000/` | Eufy Security bridge |
+| `http://vault:8222/` | Vaultwarden password manager |
+| `http://speed:8765/` | Speedtest Tracker |
+| `http://meals:9925/` | Mealie recipes/meal planner |
 
 These only resolve for devices using Pi-hole as their DNS server (see above) — until
 that's set on your router, use the `http://<pi-ip>:<port>` forms instead, which always
@@ -203,6 +210,88 @@ in DJI's lineup is the Tello, which has an open UDP SDK — not applicable here.
 Also out of scope — it's a discontinued, fully closed device tied to the Glow app/Amazon
 account with no public API ever offered.
 
+## More home services
+
+Beyond home automation, this Pi doubles as a small family server. These are wired into
+`docker-compose.yml` and come up with everything else — here's how to finish setting each
+one up.
+
+### Vaultwarden (family password manager)
+
+A self-hosted, Bitwarden-compatible password manager. Everyone in the house gets their
+own vault, synced across all their devices, with no monthly fee and nothing stored in
+someone else's cloud.
+
+1. Open `http://vault:8222/` (or `http://<pi-ip>:8222`) and click **Create account** —
+   do this once for each family member.
+2. Once everyone has an account, lock the door: set `SIGNUPS_ALLOWED=false` on the
+   `vaultwarden` service in `docker-compose.yml`, then `docker compose up -d vaultwarden`.
+   New accounts can still be created by invite from inside the app after that.
+3. Install the Bitwarden app/browser extension on each device and point it at your server.
+
+> **Heads up on the mobile app / browser extension:** Bitwarden's official clients require
+> **HTTPS** to connect (the web vault in a browser at `http://...` works fine, but the
+> apps/extensions refuse plain HTTP for anything other than `localhost`). Two easy ways to
+> get HTTPS: reach Vaultwarden *through the WireGuard VPN below* (then it's effectively
+> local), or put it behind a reverse proxy with a certificate. Ask me and I'll add a Caddy
+> reverse-proxy service that gives every service automatic HTTPS — it's the natural next
+> step once you've got these running.
+
+### Speedtest Tracker (internet speed history)
+
+Runs an Ookla speed test every hour and graphs download/upload/latency over time — so when
+the internet feels slow, you have receipts. Open `http://speed:8765/` (or
+`http://<pi-ip>:8765`).
+
+- Default login is `admin@example.com` / `password` — change it immediately under the
+  user menu.
+- Change how often it tests by editing `SPEEDTEST_SCHEDULE` (a cron expression) on the
+  `speedtest-tracker` service; it defaults to hourly.
+- `install.sh` generates the required `APP_KEY` automatically. If you ever see a "No
+  application encryption key" error, it means `SPEEDTEST_APP_KEY` in `.env` is blank —
+  re-run `./install.sh` to fill it in.
+
+### Mealie (recipes & meal planning)
+
+A shared recipe box, weekly meal planner, and auto-built shopping list the whole family
+can use from their phones. Open `http://meals:9925/` (or `http://<pi-ip>:9925`).
+
+- First login is `admin@example.com` / `MyPassword` — change the email and password right
+  away in Settings.
+- Its best trick: paste a recipe URL from almost any cooking site and Mealie imports the
+  ingredients and steps automatically. Add household members under Settings → Users so
+  everyone can add to the shared shopping list.
+
+### WireGuard (private VPN into your home)
+
+Lets your phone/laptop securely reach *everything* on this list — Home Assistant, cameras,
+the dashboard, the file share — from anywhere, as if you were sitting at home, and routes
+that traffic through Pi-hole so you get ad-blocking on the go too. It's also a cleaner
+setup than a commercial VPN for getting *into* your own network.
+
+Getting it reachable from outside takes two things your ISP router controls:
+
+1. **Forward the port.** In your router (the Port Forwarding / IP Reservations page),
+   forward **UDP port 51820** to the Pi's IP (`192.168.1.30`).
+2. **Tell clients where "home" is.** Set `WG_SERVERURL` in `.env` to your home's public IP
+   (see it at <https://ifconfig.me>) or, better, a free dynamic-DNS hostname (e.g.
+   [DuckDNS](https://www.duckdns.org/)) so it keeps working when Spectrum changes your IP.
+   Leaving it as `auto` auto-detects the current public IP but won't self-update if that IP
+   changes. Then `docker compose up -d wireguard`.
+
+To connect a device, generate its config:
+
+```bash
+docker exec wireguard /app/show-peer phone     # prints a QR code for the "phone" peer
+```
+
+Install the **WireGuard** app on the phone, tap **+ → Scan from QR code**, point it at the
+terminal, and toggle it on. Add more devices by editing `WG_PEERS` in `.env` (e.g.
+`phone,laptop,tablet`) and re-running `docker compose up -d wireguard`.
+
+> If `show-peer` reports the peer doesn't exist yet, give the container a few seconds on
+> first start to generate configs, or check `docker logs wireguard`.
+
 ## Monitoring dashboard (Uptime Kuma)
 
 Uptime Kuma doesn't let you pre-configure monitors before its account exists, so:
@@ -335,6 +424,9 @@ docker compose pull && docker compose up -d
   is needed for device discovery (mDNS/SSDP), and `privileged` gives it access to USB
   devices like Zigbee dongles. Drop `privileged: true` if you don't plan to pass through
   hardware.
-- Avoid adding heavier services (Plex/Jellyfin, Frigate NVR) to this same Pi without more
-  RAM/storage — the current stack (including eufy-security-ws, HACS, and Homepage) uses
-  roughly 2–2.5GB, leaving limited headroom on a 4GB board.
+- Avoid adding heavier services (Plex/Jellyfin, Frigate NVR, Immich, Paperless-ngx) to
+  this same Pi without more RAM/storage. With Vaultwarden, Speedtest Tracker, Mealie, and
+  WireGuard added, the stack now uses roughly 3GB on a 4GB board — still fine, but the
+  headroom is mostly spoken for. Keep an eye on `docker stats` and free memory (`free -h`);
+  if it gets tight, the lightest things to drop are ones you're not using yet (ESPHome
+  until you have a sensor, Zigbee2MQTT until you have a dongle).

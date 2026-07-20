@@ -131,6 +131,89 @@ services:
       retries: 3
       start_period: 20s
 
+  vaultwarden:
+    container_name: vaultwarden
+    image: vaultwarden/server:latest
+    restart: unless-stopped
+    ports:
+      - "8222:80" # web vault: http://vault:8222/
+    volumes:
+      - ./vaultwarden:/data
+    environment:
+      - TZ=${TZ}
+      # Leave signups on until everyone in the house has made their account, then
+      # set this to false and `docker compose up -d vaultwarden` to lock it down.
+      - SIGNUPS_ALLOWED=true
+    labels:
+      - autoheal=true
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/alive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  speedtest-tracker:
+    container_name: speedtest-tracker
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    restart: unless-stopped
+    ports:
+      - "8765:80" # dashboard: http://speed:8765/
+    volumes:
+      - ./speedtest-tracker:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - APP_KEY=${SPEEDTEST_APP_KEY}
+      - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE=0 * * * * # run a test at the top of every hour
+      - PRUNE_RESULTS_OLDER_THAN=90 # keep 90 days of history
+    labels:
+      - autoheal=true
+
+  mealie:
+    container_name: mealie
+    image: ghcr.io/mealie-recipes/mealie:latest
+    restart: unless-stopped
+    ports:
+      - "9925:9000" # recipe box: http://meals:9925/
+    volumes:
+      - ./mealie:/app/data
+    environment:
+      - TZ=${TZ}
+      - BASE_URL=http://meals:9925
+      - ALLOW_SIGNUP=false # first login is admin@example.com / MyPassword (change it immediately)
+    labels:
+      - autoheal=true
+
+  wireguard:
+    container_name: wireguard
+    image: lscr.io/linuxserver/wireguard:latest
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - "51820:51820/udp" # forward this UDP port on your router to the Pi
+    volumes:
+      - ./wireguard:/config
+      - /lib/modules:/lib/modules:ro
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      # SERVERURL is what remote clients dial in to. Put your home's public IP or a
+      # dynamic-DNS hostname here. "auto" tries to detect the public IP at startup,
+      # which works but breaks if your ISP changes it (see README for DDNS).
+      - SERVERURL=${WG_SERVERURL:-auto}
+      - SERVERPORT=51820
+      - PEERS=${WG_PEERS:-phone,laptop} # one client config generated per name
+      - PEERDNS=${PI_STATIC_IP} # remote devices get Pi-hole ad-blocking too
+      - INTERNAL_SUBNET=10.13.13.0
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+
   autoheal:
     container_name: autoheal
     image: willfarrell/autoheal:latest

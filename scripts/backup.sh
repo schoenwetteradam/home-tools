@@ -23,6 +23,10 @@ tar -czf "$ARCHIVE" \
   eufy-security-ws \
   esphome \
   zigbee2mqtt/data \
+  vaultwarden \
+  speedtest-tracker \
+  mealie \
+  wireguard \
   .env
 
 echo "Wrote $ARCHIVE"

@@ -63,12 +63,26 @@ else
   log ".env already exists, using it as-is"
 fi
 
+# --- 3b. Ensure newer vars exist in .env (for stacks set up before they were added) --
+if ! grep -q '^SPEEDTEST_APP_KEY=' .env; then
+  echo 'SPEEDTEST_APP_KEY=' >> .env
+fi
+if [[ -z "$(grep '^SPEEDTEST_APP_KEY=' .env | cut -d= -f2-)" ]]; then
+  log "Generating a Speedtest Tracker APP_KEY"
+  app_key="base64:$(openssl rand -base64 32)"
+  # `|` appears in base64, so use a sed delimiter that can't collide with it
+  sed -i "s#^SPEEDTEST_APP_KEY=.*#SPEEDTEST_APP_KEY=${app_key}#" .env
+fi
+grep -q '^WG_SERVERURL=' .env || echo 'WG_SERVERURL=auto' >> .env
+grep -q '^WG_PEERS=' .env || echo 'WG_PEERS=phone,laptop' >> .env
+
 # --- 4. Data directories ---------------------------------------------------
 mkdir -p config/homeassistant \
          mosquitto/data mosquitto/log \
          pihole/etc-pihole pihole/etc-dnsmasq.d \
          uptime-kuma portainer eufy-security-ws \
-         esphome zigbee2mqtt/data
+         esphome zigbee2mqtt/data \
+         vaultwarden speedtest-tracker mealie wireguard
 
 # --- 5. Friendly local hostnames, served by Pi-hole's DNS -------------------
 # shellcheck disable=SC1091
@@ -78,7 +92,7 @@ if [[ -n "${PI_STATIC_IP:-}" ]]; then
   log "Adding friendly local hostnames to Pi-hole (dash, ha, pihole, status, portainer, cameras)"
   custom_list="pihole/etc-pihole/custom.list"
   touch "$custom_list"
-  for name in dash ha pihole status portainer cameras; do
+  for name in dash ha pihole status portainer cameras vault speed meals; do
     sed -i "/[[:space:]]${name}\$/d" "$custom_list"
     echo "${PI_STATIC_IP} ${name}" >> "$custom_list"
   done
@@ -105,7 +119,13 @@ Stack is up. Give Home Assistant a minute to finish its first boot, then visit:
   Uptime Kuma      http://status:3001/      or http://${pi_ip}:3001
   Portainer        http://portainer:9000/   or http://${pi_ip}:9000
   Eufy bridge      http://cameras:3000/     or http://${pi_ip}:3000
+  Vaultwarden      http://vault:8222/       or http://${pi_ip}:8222
+  Speedtest        http://speed:8765/       or http://${pi_ip}:8765
+  Mealie           http://meals:9925/       or http://${pi_ip}:9925
   MQTT broker      ${pi_ip}:1883
+
+WireGuard VPN configs (scan the QR codes with the WireGuard phone app):
+  docker exec wireguard /app/show-peer phone   # or: laptop, etc.
 
 See README.md for next steps (setting Pi-hole as your router's DNS, backups, adding more services).
 EOF

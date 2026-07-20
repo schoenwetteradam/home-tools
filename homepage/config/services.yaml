@@ -10,6 +10,16 @@
         href: http://cameras:3000/
         description: Camera & doorbell bridge
         icon: eufy-security.png
+    - Vaultwarden:
+        href: http://vault:8222/
+        description: Family password manager
+        icon: vaultwarden.png
+
+- Family:
+    - Mealie:
+        href: http://meals:9925/
+        description: Recipes & meal planning
+        icon: mealie.png
 
 - Network:
     - Pi-hole:
@@ -20,6 +30,10 @@
         href: http://status:3001/
         description: Is everything online?
         icon: uptime-kuma.png
+    - Speedtest:
+        href: http://speed:8765/
+        description: Internet speed history
+        icon: speedtest-tracker.png
     - Portainer:
         href: http://portainer:9000/
         description: Manage containers
